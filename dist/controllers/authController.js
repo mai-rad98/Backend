@@ -1,5 +1,5 @@
 // @ts-nocheck
-import User from "../models/userModel.js";
+import User from "../models/userModel";
 import bcrypt from "bcryptjs";
 import { generateTokens } from "../config/utils.js";
 import jwt from 'jsonwebtoken';
