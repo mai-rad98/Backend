@@ -1,20 +1,5 @@
 // @ts-nocheck
-
-import mongoose, { Document, Schema, Model } from 'mongoose';
-
-// Define an interface for the user document
-interface IUser extends Document {
-    email: string;
-    firstName: string;
-    lastName: string;
-    coolerUsername: string;
-    password: string;
-    profilePic?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-
+import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
     email: {
         type: String,
@@ -55,13 +40,10 @@ const userSchema = new mongoose.Schema({
         default: Date.now,
     },
 });
-
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
     this.updatedAt = new Date();
     next();
 });
-
-
-
-const User: Model<IUser> = mongoose.model<IUser>('User', userSchema);
+const User = mongoose.model('User', userSchema);
 export default User;
+//# sourceMappingURL=userModel.js.map

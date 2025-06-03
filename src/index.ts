@@ -1,9 +1,11 @@
+// @ts-nocheck
+
 import express from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import connectDB from './config/dbConnect.ts'
 import authRoutes from './routes/authRoutes.ts'
-import {app,server} from '../lib/socket'
+import {app,server} from './lib/socket.js'
 import cookieParser from 'cookie-parser';
 import gameRoutes from './routes/gamesRoutes.ts';
 

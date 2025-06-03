@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import mongoose, { Document, Schema, Model } from 'mongoose';
 import User from './user';
 

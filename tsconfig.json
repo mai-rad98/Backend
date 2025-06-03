@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ES2022",         // Changed from CommonJS
+    "moduleResolution": "node",     
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,  // Added for better compatibility
     "strict": true,
-    "outDir": "./dist",
+    "outDir": "dist",
+    "rootDir": "src",
     "sourceMap": true,
     "skipLibCheck": true
   },

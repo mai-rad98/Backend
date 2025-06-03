@@ -1,7 +1,10 @@
+// @ts-nocheck
+
+
 import { Server } from 'socket.io';
 import http from 'http';
 import express from 'express';
-import Game from '../src/models/gamesModel.js';
+import Game from '../models/gamesModel.js';
 
 const app = express();
 const server = http.createServer(app);
