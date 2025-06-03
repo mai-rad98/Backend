@@ -11,4 +11,3 @@ router.post('/:gameId/move', protectRoute, makeMove);
 router.post('/:gameId/leave', protectRoute, endGame);
 router.get('/', protectRoute, getUserGames);
 export default router;
-//# sourceMappingURL=gamesRoutes.js.map

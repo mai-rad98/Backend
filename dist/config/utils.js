@@ -15,4 +15,3 @@ export const generateTokens = (userId, res) => {
     });
     return { accessToken, refreshToken };
 };
-//# sourceMappingURL=utils.js.map

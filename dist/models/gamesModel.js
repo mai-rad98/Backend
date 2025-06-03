@@ -102,4 +102,3 @@ gameSchema.pre('save', function (next) {
 });
 const Game = mongoose.model('Game', gameSchema);
 export default Game;
-//# sourceMappingURL=gamesModel.js.map

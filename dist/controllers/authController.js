@@ -114,4 +114,3 @@ export const checkAuth = (req, res) => {
         return res.status(500).json({ message: "Server Error" });
     }
 };
-//# sourceMappingURL=authController.js.map

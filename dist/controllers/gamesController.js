@@ -359,4 +359,3 @@ export const endGame = async (req, res) => {
         return res.status(500).json({ message: "Server Error" });
     }
 };
-//# sourceMappingURL=gamesController.js.map
