@@ -95,7 +95,7 @@ export const signUp = async (req: Request, res: Response): Promise<Response> => 
 
         if(newUser){
             //generate token here
-           generateToken(newUser._id,res)
+           generateTokens(newUser._id,res)
             await newUser.save()
 
             res.status(201).json({
