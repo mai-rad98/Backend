@@ -44,7 +44,7 @@ export const signIn = async (req, res) => {
     catch (error) {
         console.log("3Sign in request body:", req.body);
         console.error("Error in signing in", error);
-        return res.status(500).json({ message: "Server Error" });
+        return res.status(500).json({ message: "Server Error",error: error.message });
     }
 };
 export const signUp = async (req, res) => {
