@@ -1,8 +1,8 @@
 // @ts-nocheck
 
 import { Request, Response } from 'express';
-import Game from '../models/gamesModel.ts';
-import User from '../models/userModel';
+import Game from '../models/gamesModel.js';
+import User from '../models/userModel.js';
 import { getReceiverSocketId,io } from '../lib/socket.js';
 
 interface AuthenticatedRequest extends Request {

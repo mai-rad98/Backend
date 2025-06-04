@@ -9,8 +9,8 @@ import {
     endGame,
     getUserGames,
     getUsers
-} from '../controllers/gamesController.ts';
-import { protectRoute } from '../middleware/authMiddleware.ts';
+} from '../controllers/gamesController.js';
+import { protectRoute } from '../middleware/authMiddleware.js';
 
 
 const router = express.Router();

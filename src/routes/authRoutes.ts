@@ -1,8 +1,8 @@
 // @ts-nocheck
 
 import express from 'express';
-import { refreshToken,signUp, signIn, logOut, updateProfile, checkAuth } from '../controllers/authController.ts';
-import { protectRoute } from '../middleware/authMiddleware.ts';
+import { refreshToken,signUp, signIn, logOut, updateProfile, checkAuth } from '../controllers/authController.js';
+import { protectRoute } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 router.post("/signup", signUp);

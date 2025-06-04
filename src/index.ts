@@ -3,11 +3,11 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
-import connectDB from './config/dbConnect.ts'
-import authRoutes from './routes/authRoutes.ts'
+import connectDB from './config/dbConnect.js'
+import authRoutes from './routes/authRoutes.js'
 import {app,server} from './lib/socket.js'
 import cookieParser from 'cookie-parser';
-import gameRoutes from './routes/gamesRoutes.ts';
+import gameRoutes from './routes/gamesRoutes.js';
 
 
 // Load environment variabless
