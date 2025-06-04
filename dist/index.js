@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: "http://localhost:8080",
+    origin: "https://mmele.vercel.app",
     credentials: true,
 }));
 console.log("4");
