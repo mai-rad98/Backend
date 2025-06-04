@@ -33,7 +33,7 @@ export const generateTokens = (userId: string, res: Response): Tokens => {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true,
         sameSite: "strict",
-        secure: process.env.NODE_ENV !== 'development',
+        secure: false,
     });
 
     return { accessToken, refreshToken };
