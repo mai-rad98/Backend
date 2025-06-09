@@ -87,6 +87,8 @@ export const logOut = (req, res) => {
         sameSite: 'strict',
         secure: process.env.NODE_ENV !== 'development',
     });
+    console.log(`[${new Date().toISOString()}] Refresh token cleared for IP: ${req.ip}, User-Agent: ${req.headers['user-agent']}`);
+
     return res.json({ message: 'Logged out successfully' });
 };
 export const updateProfile = async (req, res) => {
