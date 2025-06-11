@@ -8,7 +8,8 @@ import {
     makeMove,
     endGame,
     getUserGames,
-    getUsers
+    getUsers,
+    forfeitGame
 } from '../controllers/gamesController.js';
 import { protectRoute } from '../middleware/authMiddleware.js';
 
@@ -21,6 +22,7 @@ router.post('/invite/:gameId/respond', protectRoute, respondToGameInvite);
 router.get('/:gameId', protectRoute, getGameDetails);
 router.post('/:gameId/move', protectRoute, makeMove);
 router.post('/:gameId/leave', protectRoute, endGame);
+router.post('/:gameId/forfeit', protectRoute, forfeitGame);
 router.get('/', protectRoute,getUserGames);
 
 export default router;

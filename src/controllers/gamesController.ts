@@ -444,3 +444,98 @@ export const endGame = async (req: Request, res: Response): Promise<Response> =>
         return res.status(500).json({ message: "Server Error" });
     }
 };
+
+
+// Add this method to your games controller
+
+export const forfeitGame = async (req: Request, res: Response): Promise<Response>  => {
+    try {
+      const { gameId } = req.params;
+      const userId = req.user.id; // Assuming you have user info from auth middleware
+      
+      // Find the game
+      const game = await Game.findById(gameId);
+      
+      if (!game) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Game not found" 
+        });
+      }
+      
+      // Check if user is a participant in this game
+      const isPlayer = game.players.some(player => 
+        player.userId.toString() === userId.toString()
+      );
+      
+      if (!isPlayer) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "You are not a participant in this game" 
+        });
+      }
+      
+      // Check if game is already finished
+      if (game.status === 'completed' || game.status === 'forfeited') {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Game is already finished" 
+        });
+      }
+      
+      // Determine the forfeiting player and winner
+      const forfeitingPlayer = game.players.find(player => 
+        player.userId.toString() === userId.toString()
+      );
+      
+      const winningPlayer = game.players.find(player => 
+        player.userId.toString() !== userId.toString()
+      );
+      
+      // Update game status
+      game.status = 'forfeited';
+      game.winner = winningPlayer ? winningPlayer.userId : null;
+      game.forfeitedBy = userId;
+      game.endedAt = new Date();
+      game.endReason = 'forfeit';
+      
+      // Save the updated game
+      await game.save();
+      
+      // Update player statistics (optional)
+      if (winningPlayer) {
+        await updatePlayerStats(winningPlayer.userId, 'win');
+      }
+      await updatePlayerStats(userId, 'loss');
+      
+      // Emit socket event to notify other players
+      if (req.io && game.roomId) {
+        req.io.to(game.roomId).emit('gameForfeited', {
+          gameId: game._id,
+          forfeitedBy: userId,
+          winner: winningPlayer ? winningPlayer.userId : null,
+          message: `${forfeitingPlayer.username || 'Player'} has forfeited the game`
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: "Game forfeited successfully",
+        data: {
+          gameId: game._id,
+          status: game.status,
+          winner: game.winner,
+          forfeitedBy: game.forfeitedBy,
+          endedAt: game.endedAt
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error forfeiting game:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error" 
+      });
+    }
+  };
+  
