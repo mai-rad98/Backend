@@ -853,7 +853,7 @@ socket.on("gameOver", ({ winner, reason }) => {
       console.log(`Game Over. Winner: ${winner}. Reason: ${reason}`);
     });
 
-//forfeit game
+/* //forfeit game
 socket.on("forfeitGame", async ({ gameId, playerId }, callback) => {
   try {
     console.log("📥 Received forfeitGame:", { gameId, playerId });
@@ -929,6 +929,87 @@ socket.on("forfeitGame", async ({ gameId, playerId }, callback) => {
       forfeitedBy: playerId
     });
     
+  } catch (error) {
+    console.error("🔥 Forfeit failed:", error);
+    return callback({ success: false, error: error.message });
+  }
+});
+ */
+
+socket.on("forfeitGame", async ({ gameId, playerId }, callback) => {
+  try {
+    console.log("📥 Received forfeitGame:", { gameId, playerId });
+
+    const game = await Game
+      .findById(gameId)
+      .populate('players.red players.blue');
+
+    if (!game) {
+      console.error("❌ Game not found");
+      return callback({ success: false, error: "Game not found" });
+    }
+
+    // Identify forfeiting and winning player
+    let forfeitingPlayer = null;
+    let winningPlayer = null;
+
+    if (game.players.red?._id?.toString() === playerId.toString()) {
+      forfeitingPlayer = 'red';
+      winningPlayer = 'blue';
+    } else if (game.players.blue?._id?.toString() === playerId.toString()) {
+      forfeitingPlayer = 'blue';
+      winningPlayer = 'red';
+    } else {
+      console.error("❌ Player not found in this game");
+      return callback({ success: false, error: "Player not found in this game" });
+    }
+
+    if (game.phase === 'gameOver') {
+      console.error("❌ Game is already finished");
+      return callback({ success: false, error: "Game is already finished" });
+    }
+
+    console.log(`🟢 Player ${playerId} forfeited as ${forfeitingPlayer}`);
+
+    // Update game
+    game.winner = winningPlayer;
+    game.phase = 'gameOver';
+    game.forfeitedBy = playerId;
+    game.endedAt = new Date();
+    game.endReason = 'forfeit';
+
+    await game.save();
+    console.log("💾 Game updated with forfeit and winner");
+
+    const forfeitData = {
+      gameId: game._id,
+      forfeitedBy: playerId,
+      forfeitingPlayer,
+      winner: winningPlayer,
+      winnerPlayerId: game.players[winningPlayer]?._id,
+      endedAt: game.endedAt,
+      message: `${forfeitingPlayer} player has forfeited the game`,
+      game: {
+        _id: game._id,
+        winner: game.winner,
+        phase: game.phase,
+        endReason: game.endReason,
+        forfeitedBy: game.forfeitedBy
+      }
+    };
+
+    io.to(gameId).emit('gameForfeited', forfeitData);
+    socket.emit('gameForfeited', forfeitData);
+
+    console.log("📡 Emitted gameForfeited:", forfeitData);
+
+    callback({ 
+      success: true, 
+      message: "Game forfeited successfully",
+      winner: winningPlayer,
+      forfeitedBy: playerId
+    });
+
   } catch (error) {
     console.error("🔥 Forfeit failed:", error);
     return callback({ success: false, error: error.message });
