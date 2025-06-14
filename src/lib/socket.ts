@@ -972,7 +972,7 @@ socket.on("forfeitGame", async ({ gameId, playerId }, callback) => {
     console.log(`🟢 Player ${playerId} forfeited as ${forfeitingPlayer}`);
 
     // Update game
-    game.winner = winningPlayer;
+    game.winner = game.players[winningPlayer]?._id;
     game.phase = 'gameOver';
     game.forfeitedBy = playerId;
     game.endedAt = new Date();
