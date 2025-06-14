@@ -519,6 +519,16 @@ export const forfeitGame = async (req: Request, res: Response): Promise<Response
       
       // Save the updated game
       await game.save();
+
+      io.to(game._id.toString()).emit('gameForfeited', {
+        gameId: game._id,
+        forfeitedBy: userId,
+        forfeitingPlayer,
+        winner: game.winner,
+        winnerPlayerId: (winningPlayer?.userId || winningPlayer?._id || winningPlayer)?.toString(),
+        game
+      });
+      
       
       // Update player statistics (optional)
       if (winningPlayer) {
