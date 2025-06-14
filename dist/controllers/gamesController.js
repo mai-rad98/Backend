@@ -359,13 +359,16 @@ export const endGame = async (req, res) => {
         return res.status(500).json({ message: "Server Error" });
     }
 };
-export const forfeitGame = async (req,res)  => {
+
+
+
+export const forfeitGame = async (req,res) => {
     try {
       const { gameId } = req.params;
-      const userId = req.user.id; // Assuming you have user info from auth middleware
+      const userId = req.user.id;
       
-      // Find the game
-      const game = await Game.findById(gameId);
+      // Find the game and populate players if needed
+      const game = await Game.findById(gameId).populate('players.userId', 'username');
       
       if (!game) {
         return res.status(404).json({ 
@@ -374,10 +377,26 @@ export const forfeitGame = async (req,res)  => {
         });
       }
       
+      // Debug log to check the structure
+      console.log('Game players structure:', game.players);
+      console.log('Type of game.players:', typeof game.players);
+      console.log('Is array:', Array.isArray(game.players));
+      
+      // Ensure players is an array
+      if (!Array.isArray(game.players)) {
+        console.error('game.players is not an array:', game.players);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Invalid game data structure" 
+        });
+      }
+      
       // Check if user is a participant in this game
-      const isPlayer = game.players.some(player => 
-        player.userId.toString() === userId.toString()
-      );
+      const isPlayer = game.players.some(player => {
+        // Handle different possible structures
+        const playerId = player.userId || player._id || player;
+        return playerId.toString() === userId.toString();
+      });
       
       if (!isPlayer) {
         return res.status(403).json({ 
@@ -395,17 +414,19 @@ export const forfeitGame = async (req,res)  => {
       }
       
       // Determine the forfeiting player and winner
-      const forfeitingPlayer = game.players.find(player => 
-        player.userId.toString() === userId.toString()
-      );
+      const forfeitingPlayer = game.players.find(player => {
+        const playerId = player.userId || player._id || player;
+        return playerId.toString() === userId.toString();
+      });
       
-      const winningPlayer = game.players.find(player => 
-        player.userId.toString() !== userId.toString()
-      );
+      const winningPlayer = game.players.find(player => {
+        const playerId = player.userId || player._id || player;
+        return playerId.toString() !== userId.toString();
+      });
       
       // Update game status
       game.status = 'forfeited';
-      game.winner = winningPlayer ? winningPlayer.userId : null;
+      game.winner = winningPlayer ? (winningPlayer.userId || winningPlayer._id || winningPlayer) : null;
       game.forfeitedBy = userId;
       game.endedAt = new Date();
       game.endReason = 'forfeit';
@@ -415,21 +436,18 @@ export const forfeitGame = async (req,res)  => {
       
       // Update player statistics (optional)
       if (winningPlayer) {
-        await updatePlayerStats(winningPlayer.userId, 'win');
+        const winnerId = winningPlayer.userId || winningPlayer._id || winningPlayer;
+        await updatePlayerStats(winnerId, 'win');
       }
       await updatePlayerStats(userId, 'loss');
       
-      // Emit socket event to notify other players
-      if (req.io && game.roomId) {
-        req.io.to(game.roomId).emit('gameForfeited', {
-          gameId: game._id,
-          forfeitedBy: userId,
-          winner: winningPlayer ? winningPlayer.userId : null,
-          message: `${forfeitingPlayer.username || 'Player'} has forfeited the game`
-        });
-      }
+      // Note: Socket event emission should be handled in your socket.ts file
+      // You can either:
+      // 1. Emit an internal event that your socket handler listens to
+      // 2. Call a socket service function from here
+      // 3. Handle the forfeit logic directly in your socket handler
       
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: "Game forfeited successfully",
         data: {
@@ -443,7 +461,7 @@ export const forfeitGame = async (req,res)  => {
       
     } catch (error) {
       console.error('Error forfeiting game:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: "Internal server error" 
       });
