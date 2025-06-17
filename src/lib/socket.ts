@@ -82,6 +82,55 @@ function checkForWinner(game) {
 }
 
 
+const isPartOfMill = (position, player, pieces) => {
+  const mills = [
+    // Outer square horizontal & vertical
+    [{x: 0, y: 0}, {x: 3, y: 0}, {x: 6, y: 0}],
+    [{x: 0, y: 0}, {x: 0, y: 3}, {x: 0, y: 6}],
+    [{x: 0, y: 6}, {x: 3, y: 6}, {x: 6, y: 6}],
+    [{x: 6, y: 0}, {x: 6, y: 3}, {x: 6, y: 6}],
+
+    // Middle square horizontal & vertical
+    [{x: 1, y: 1}, {x: 3, y: 1}, {x: 5, y: 1}],
+    [{x: 1, y: 5}, {x: 3, y: 5}, {x: 5, y: 5}],
+    [{x: 1, y: 1}, {x: 1, y: 3}, {x: 1, y: 5}],
+    [{x: 5, y: 1}, {x: 5, y: 3}, {x: 5, y: 5}],
+
+    // Inner square horizontal & vertical
+    [{x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}],
+    [{x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}],
+    [{x: 2, y: 2}, {x: 2, y: 3}, {x: 2, y: 4}],
+    [{x: 4, y: 2}, {x: 4, y: 3}, {x: 4, y: 4}],
+
+    // Cross-square vertical
+    [{x: 3, y: 0}, {x: 3, y: 1}, {x: 3, y: 2}],
+    [{x: 3, y: 4}, {x: 3, y: 5}, {x: 3, y: 6}],
+    [{x: 0, y: 3}, {x: 1, y: 3}, {x: 2, y: 3}],
+    [{x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}],
+
+    // Diagonal mills
+    [{x: 0, y: 0}, {x: 1, y: 1}, {x: 2, y: 2}],
+    [{x: 6, y: 0}, {x: 5, y: 1}, {x: 4, y: 2}],
+    [{x: 6, y: 6}, {x: 5, y: 5}, {x: 4, y: 4}],
+    [{x: 0, y: 6}, {x: 1, y: 5}, {x: 2, y: 4}],
+  ];
+
+  return mills.some(line =>
+    line.every(pos =>
+      pieces.some(p =>
+        p.player === player &&
+        p.position.x === pos.x &&
+        p.position.y === pos.y
+      )
+    ) &&
+    line.some(pos =>
+      pos.x === position.x && pos.y === position.y
+    )
+  );
+};
+
+
+
 
 io.on("connection", (socket) => {
     console.log("A user connected", socket.id);
@@ -317,7 +366,7 @@ io.on("connection", (socket) => {
     
 
 
- socket.on("removePiece", async ({ gameId, position, playerId }, callback) => {
+/*  socket.on("removePiece", async ({ gameId, position, playerId }, callback) => {
   try {
     console.log("📥 Received removePiece:", { gameId, position, playerId });
 
@@ -392,8 +441,95 @@ io.on("connection", (socket) => {
     console.error("🔥 Save failed:", error);
     callback({ success: false, error: error.message });
   }
-});
+}); */
  
+socket.on("removePiece", async ({ gameId, position, playerId }, callback) => {
+  try {
+    console.log("📥 Received removePiece:", { gameId, position, playerId });
+
+    const game = await Game.findById(gameId);
+    if (!game || !game.board?.pieces) {
+      console.error("❌ Game or board not initialized");
+      return callback({ success: false, error: "Game not found or invalid board" });
+    }
+
+    // Identify player color
+    const playerColor = game.players.red.equals(playerId) ? "red" : "blue";
+    const opponentColor = playerColor === "red" ? "blue" : "red";
+
+    // Validate mill lock before removal
+    const opponentPieces = game.board.pieces.filter(p => p.player === opponentColor);
+    const nonMillPieces = opponentPieces.filter(p => !isPartOfMill(p.position, opponentColor, game.board.pieces));
+
+    const isTryingToRemoveFromMill = isPartOfMill(position, opponentColor, game.board.pieces);
+    if (nonMillPieces.length > 0 && isTryingToRemoveFromMill) {
+      console.warn("❌ Attempted to remove a piece in a mill while others are available");
+      return callback({ success: false, error: "You can’t remove a piece in a mill unless no other pieces are available." });
+    }
+
+    // Locate piece to remove
+    const pieceIndex = game.board.pieces.findIndex(p =>
+      Number(p.position?.x) === Number(position.x) &&
+      Number(p.position?.y) === Number(position.y)
+    );
+
+    if (pieceIndex === -1) {
+      console.error("❌ Piece not found");
+      return callback({ success: false, error: "Piece not found" });
+    }
+
+    // Remove the piece
+    const removed = game.board.pieces.splice(pieceIndex, 1);
+    console.log("🗑️ Removed piece:", removed);
+    console.log("📌 Before save - board pieces count:", game.board.pieces.length);
+
+    game.markModified('board');
+
+    // Decide game phase
+    const bothPlacedAll = game.placedPiecesRed >= 12 && game.placedPiecesBlue >= 12;
+    game.phase = bothPlacedAll ? 'moving' : 'placing';
+
+    // Switch turn
+    game.currentTurn = game.players.red.equals(playerId)
+      ? game.players.blue
+      : game.players.red;
+
+    // Check for winner
+    const winnerResult = checkForWinner(game);
+    if (winnerResult) {
+      game.winner = winnerResult.winner;
+      console.log(`🏆 Winner detected: ${game.winner}`);
+    }
+
+    await game.save();
+    console.log("💾 Game saved successfully");
+
+    const fresh = await Game.findById(gameId);
+    console.log("🧪 Reloaded from DB - board pieces:", fresh.board.pieces.length);
+
+    // Emit updates
+    io.to(gameId).emit('pieceRemoved', {
+      removedPosition: position,
+      updatedPieces: fresh.board.pieces,
+      nextPlayer: fresh.currentTurn,
+      phase: fresh.phase,
+      winner: fresh.winner
+    });
+
+    if (fresh.winner) {
+      io.to(gameId).emit('gameOver', {
+        winner: fresh.winner,
+        reason: winnerResult.reason
+      });
+    }
+
+    callback({ success: true });
+
+  } catch (error) {
+    console.error("🔥 Save failed:", error);
+    callback({ success: false, error: error.message });
+  }
+});
 
 
 
@@ -853,88 +989,7 @@ socket.on("gameOver", ({ winner, reason }) => {
       console.log(`Game Over. Winner: ${winner}. Reason: ${reason}`);
     });
 
-/* //forfeit game
-socket.on("forfeitGame", async ({ gameId, playerId }, callback) => {
-  try {
-    console.log("📥 Received forfeitGame:", { gameId, playerId });
-    
-    const game = await Game 
-      .findById(gameId)
-      .populate('players.red players.blue');
-      
-    if (!game) {
-      console.error("❌ Game not found");
-      return callback({ success: false, error: "Game not found" });   
-    }
-    
-    const player = getPlayerById(game.players, playerId);
-    if (!player) {
-      console.error("❌ Player not found in this game");
-      return callback({ success: false, error: "Player not found in this game" });
-    }
-    
-    // Check if game is already finished
-    if (game.phase === 'gameOver') {
-      console.error("❌ Game is already finished");
-      return callback({ success: false, error: "Game is already finished" });
-    }
-    
-    console.log(`🟢 Player ${playerId} forfeited the game`);
-    
-    // Store original values for the event
-    const forfeitingPlayer = player.player; // 'red' or 'blue'
-    const winningPlayer = player.player === 'red' ? 'blue' : 'red';
-    
-    // Update game state
-    game.winner = winningPlayer; // Set the other player as the winner
-    game.phase = 'gameOver'; // Set phase to gameOver
-    game.forfeitedBy = playerId;
-    game.endedAt = new Date();
-    game.endReason = 'forfeit';
-    
-    await game.save();
-    console.log("💾 Game updated with forfeit and winner");
-    
-    // Emit gameForfeited event to all players in the room
-    const forfeitData = {
-      gameId: game._id,
-      forfeitedBy: playerId,
-      forfeitingPlayer: forfeitingPlayer,
-      winner: winningPlayer,
-      winnerPlayerId: forfeitingPlayer === 'red' ? game.players.blue?._id : game.players.red?._id,
-      endedAt: game.endedAt,
-      message: `${forfeitingPlayer} player has forfeited the game`,
-      game: {
-        _id: game._id,
-        winner: game.winner,
-        phase: game.phase,
-        endReason: game.endReason,
-        forfeitedBy: game.forfeitedBy
-      }
-    };
-    
-    // Emit to the game room (all players)
-    io.to(gameId).emit('gameForfeited', forfeitData);
-    
-    // Also emit to the specific player who forfeited (in case they're not in the room)
-    socket.emit('gameForfeited', forfeitData);
-    
-    console.log("📡 Emitted gameForfeited event:", forfeitData);
-    
-    // Send success callback
-    callback({ 
-      success: true, 
-      message: "Game forfeited successfully",
-      winner: winningPlayer,
-      forfeitedBy: playerId
-    });
-    
-  } catch (error) {
-    console.error("🔥 Forfeit failed:", error);
-    return callback({ success: false, error: error.message });
-  }
-});
- */
+
 
 socket.on("forfeitGame", async ({ gameId, playerId }, callback) => {
   try {
