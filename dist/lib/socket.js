@@ -622,35 +622,40 @@ io.on("connection", (socket) => {
     
       acknowledge({ success: true, updatedPieces: game.board.pieces, formedMill });
     });  */
-    socket.on('movePiece', async ({ gameId, pieceId, newPosition, playerId }, acknowledge) => {
+    /* socket.on('movePiece', async ({ gameId, pieceId, newPosition, playerId }, acknowledge) => {
         console.log('🟢 Received movePiece request:', { gameId, pieceId, newPosition, playerId });
         function checkForMill(position, player, pieces) {
             const mills = [
-                // Outer square horizontal
-                [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 6, y: 0 }],
-                [{ x: 0, y: 0 }, { x: 0, y: 3 }, { x: 0, y: 6 }],
-                [{ x: 0, y: 6 }, { x: 3, y: 6 }, { x: 6, y: 6 }],
-                [{ x: 6, y: 0 }, { x: 6, y: 3 }, { x: 6, y: 6 }],
-                // Middle square
-                [{ x: 1, y: 1 }, { x: 3, y: 1 }, { x: 5, y: 1 }],
-                [{ x: 1, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 }],
-                [{ x: 1, y: 1 }, { x: 1, y: 3 }, { x: 1, y: 5 }],
-                [{ x: 5, y: 1 }, { x: 5, y: 3 }, { x: 5, y: 5 }],
-                // Inner square
-                [{ x: 2, y: 2 }, { x: 3, y: 2 }, { x: 4, y: 2 }],
-                [{ x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 }],
-                [{ x: 2, y: 2 }, { x: 2, y: 3 }, { x: 2, y: 4 }],
-                [{ x: 4, y: 2 }, { x: 4, y: 3 }, { x: 4, y: 4 }],
-                // Vertical across squares
-                [{ x: 3, y: 0 }, { x: 3, y: 1 }, { x: 3, y: 2 }],
-                [{ x: 3, y: 4 }, { x: 3, y: 5 }, { x: 3, y: 6 }],
-                [{ x: 0, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 3 }],
-                [{ x: 4, y: 3 }, { x: 5, y: 3 }, { x: 6, y: 3 }],
-                // ✅ Diagonal mills
-                [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }],
-                [{ x: 6, y: 0 }, { x: 5, y: 1 }, { x: 4, y: 2 }],
-                [{ x: 6, y: 6 }, { x: 5, y: 5 }, { x: 4, y: 4 }],
-                [{ x: 0, y: 6 }, { x: 1, y: 5 }, { x: 2, y: 4 }],
+                // horizontal
+              [{x: 0, y: 0}, {x: 3, y: 0}, {x: 6, y: 0}],
+              [{x: 1, y: 1}, {x: 3, y: 1}, {x: 5, y: 1}],
+              [{x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}],
+              [{x: 1, y: 5}, {x: 3, y: 5}, {x: 5, y: 5}],
+              [{x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}],
+               [{x: 0, y:6},  {x: 3, y: 6}, {x:6 , y: 6}],
+
+    
+    
+    // Vertical across squares
+    [{x: 3, y: 0}, {x: 3, y: 1}, {x: 3, y: 2}],
+    [{x: 3, y: 4}, {x: 3, y: 5}, {x: 3, y: 6}],
+    [{x: 0, y: 3}, {x: 1, y: 3}, {x: 2, y: 3}],
+    [{x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}],
+    [{x: 0, y: 0}, {x: 0, y: 3}, {x: 0, y: 6}],
+    [{x: 1, y: 1}, {x: 1, y: 3}, {x: 1, y: 5}],
+    [{x: 2, y: 2}, {x: 2, y: 3}, {x: 2, y: 4}],
+    [{x: 4, y: 2}, {x: 4, y: 3}, {x: 4, y: 4}],
+    [{x: 5, y: 1}, {x: 5, y: 3}, {x: 5, y: 5}],
+    [{x:6 , y:0 }, {x:6 ,y :3 }, {x :6 ,y :6}],
+    
+
+
+    
+    // ✅ Diagonal mills
+    [{x: 0, y: 0}, {x: 1, y: 1}, {x: 2, y: 2}],
+    [{x:6 , y: 0 },{x: 5, y: 1},{x: 4, y: 2}],
+    [{x: 6, y: 6}, {x: 5, y: 5}, {x: 4, y: 4}],
+    [{x: 0, y: 6}, {x: 1, y: 5}, {x: 2, y: 4}],
             ];
             return mills.some(line => line.every(pos => pieces.some(p => p.player === player &&
                 p.position.x === pos.x &&
@@ -833,7 +838,119 @@ io.on("connection", (socket) => {
             });
         }
         acknowledge({ success: true, updatedPieces: game.board.pieces, formedMill });
+    }); */
+   
+    socket.on('movePiece', async ({ gameId, pieceId, newPosition, playerId }, acknowledge) => {
+      console.log('🟢 Received movePiece request:', { gameId, pieceId, newPosition, playerId });
+    
+      function checkForMill(position, player, pieces) {
+        const mills = [
+          [{x: 0, y: 0}, {x: 3, y: 0}, {x: 6, y: 0}],
+          [{x: 1, y: 1}, {x: 3, y: 1}, {x: 5, y: 1}],
+          [{x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}],
+          [{x: 1, y: 5}, {x: 3, y: 5}, {x: 5, y: 5}],
+          [{x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}],
+          [{x: 0, y: 6}, {x: 3, y: 6}, {x: 6, y: 6}],
+          [{x: 3, y: 0}, {x: 3, y: 1}, {x: 3, y: 2}],
+          [{x: 3, y: 4}, {x: 3, y: 5}, {x: 3, y: 6}],
+          [{x: 0, y: 3}, {x: 1, y: 3}, {x: 2, y: 3}],
+          [{x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}],
+          [{x: 0, y: 0}, {x: 0, y: 3}, {x: 0, y: 6}],
+          [{x: 1, y: 1}, {x: 1, y: 3}, {x: 1, y: 5}],
+          [{x: 2, y: 2}, {x: 2, y: 3}, {x: 2, y: 4}],
+          [{x: 4, y: 2}, {x: 4, y: 3}, {x: 4, y: 4}],
+          [{x: 5, y: 1}, {x: 5, y: 3}, {x: 5, y: 5}],
+          [{x: 6, y: 0}, {x: 6, y: 3}, {x: 6, y: 6}],
+          [{x: 0, y: 0}, {x: 1, y: 1}, {x: 2, y: 2}],
+          [{x: 6, y: 0}, {x: 5, y: 1}, {x: 4, y: 2}],
+          [{x: 6, y: 6}, {x: 5, y: 5}, {x: 4, y: 4}],
+          [{x: 0, y: 6}, {x: 1, y: 5}, {x: 2, y: 4}],
+        ];
+        return mills.some(line =>
+          line.every(pos =>
+            pieces.some(p => p.player === player && p.position.x === pos.x && p.position.y === pos.y)
+          ) &&
+          line.some(pos => pos.x === position.x && pos.y === position.y)
+        );
+      }
+    
+      const game = await Game.findById(gameId);
+      if (!game) return acknowledge({ success: false, error: "Game not found" });
+    
+      const currentPlayerColor = game.players.red.toString() === game.currentTurn.toString() ? 'red' : 'blue';
+      const piece = game.board.pieces.find(p => p.id === pieceId && p.player === currentPlayerColor);
+      if (!piece) return acknowledge({ success: false, error: "Invalid piece" });
+    
+      const playerPiecesCount = game.board.pieces.filter(p => p.player === currentPlayerColor).length;
+    
+      function isValidBoardPosition(pos) {
+        const validPositions = [
+          { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 6, y: 0 },
+          { x: 0, y: 3 }, { x: 6, y: 3 },
+          { x: 0, y: 6 }, { x: 3, y: 6 }, { x: 6, y: 6 },
+          { x: 1, y: 1 }, { x: 3, y: 1 }, { x: 5, y: 1 },
+          { x: 1, y: 3 }, { x: 5, y: 3 },
+          { x: 1, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 },
+          { x: 2, y: 2 }, { x: 3, y: 2 }, { x: 4, y: 2 },
+          { x: 2, y: 3 }, { x: 4, y: 3 },
+          { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 },
+        ];
+        return validPositions.some(p => p.x === pos.x && p.y === pos.y);
+      }
+    
+      function canMoveTo(pos1, pos2, boardPieces, gamePhase, playerPiecesCount) {
+        const dx = Math.abs(pos1.x - pos2.x);
+        const dy = Math.abs(pos1.y - pos2.y);
+        const isEmpty = !boardPieces.some(p => p.position.x === pos2.x && p.position.y === pos2.y);
+        if (!isEmpty) return false;
+        if (gamePhase === 'flying' || playerPiecesCount <= 3) return true;
+        if (gamePhase === 'moving') {
+          const isDirectlyAdjacent = dx + dy === 1 || (dx === 1 && dy === 1);
+          return isDirectlyAdjacent && isValidBoardPosition(pos2);
+        }
+        return false;
+      }
+    
+      const isValidMove = canMoveTo(piece.position, newPosition, game.board.pieces, game.phase, playerPiecesCount);
+      if (!isValidMove) return acknowledge({ success: false, error: "Invalid move" });
+    
+      piece.position = newPosition;
+      const formedMill = checkForMill(newPosition, currentPlayerColor, game.board.pieces);
+    
+      if (formedMill) {
+        game.phase = 'removing';
+      } else {
+        game.phase = 'moving';
+        game.currentTurn = game.players.red.toString() === game.currentTurn.toString() ? game.players.blue : game.players.red;
+      }
+    
+      let winnerResult;
+      if (typeof checkForWinner === 'function') {
+        winnerResult = checkForWinner(game);
+        if (winnerResult) game.winner = winnerResult.winner;
+      }
+    
+      await game.save();
+    
+      io.to(gameId).emit('pieceMoved', {
+        updatedPieces: game.board.pieces,
+        currentTurn: game.currentTurn,
+        formedMill,
+        phase: game.phase,
+        winner: game.winner
+      });
+    
+      if (game.winner) {
+        io.to(gameId).emit('gameOver', {
+          winner: game.winner,
+          reason: winnerResult ? winnerResult.reason : 'Game ended'
+        });
+      }
+    
+      acknowledge({ success: true, updatedPieces: game.board.pieces, formedMill });
     });
+    
+   
     socket.on("gameOver", ({ winner, reason }) => {
         console.log(`Game Over. Winner: ${winner}. Reason: ${reason}`);
     });
