@@ -840,157 +840,200 @@ io.on("connection", (socket) => {
         acknowledge({ success: true, updatedPieces: game.board.pieces, formedMill });
     }); */
    
-  socket.on('movePiece', async ({ gameId, pieceId, newPosition, playerId }, acknowledge) => {
-    console.log('🟢 Received movePiece request:', { gameId, pieceId, newPosition, playerId });
-  
-    function checkForMill(position, player, pieces) {
-      const mills = [
-        [{x: 0, y: 0}, {x: 3, y: 0}, {x: 6, y: 0}],
-        [{x: 1, y: 1}, {x: 3, y: 1}, {x: 5, y: 1}],
-        [{x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}],
-        [{x: 1, y: 5}, {x: 3, y: 5}, {x: 5, y: 5}],
-        [{x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}],
-        [{x: 0, y: 6}, {x: 3, y: 6}, {x: 6, y: 6}],
-        [{x: 3, y: 0}, {x: 3, y: 1}, {x: 3, y: 2}],
-        [{x: 3, y: 4}, {x: 3, y: 5}, {x: 3, y: 6}],
-        [{x: 0, y: 3}, {x: 1, y: 3}, {x: 2, y: 3}],
-        [{x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}],
-        [{x: 0, y: 0}, {x: 0, y: 3}, {x: 0, y: 6}],
-        [{x: 1, y: 1}, {x: 1, y: 3}, {x: 1, y: 5}],
-        [{x: 2, y: 2}, {x: 2, y: 3}, {x: 2, y: 4}],
-        [{x: 4, y: 2}, {x: 4, y: 3}, {x: 4, y: 4}],
-        [{x: 5, y: 1}, {x: 5, y: 3}, {x: 5, y: 5}],
-        [{x: 6, y: 0}, {x: 6, y: 3}, {x: 6, y: 6}],
-        [{x: 0, y: 0}, {x: 1, y: 1}, {x: 2, y: 2}],
-        [{x: 6, y: 0}, {x: 5, y: 1}, {x: 4, y: 2}],
-        [{x: 6, y: 6}, {x: 5, y: 5}, {x: 4, y: 4}],
-        [{x: 0, y: 6}, {x: 1, y: 5}, {x: 2, y: 4}],
-      ];
-      return mills.some(line =>
-        line.every(pos =>
-          pieces.some(p => p.player === player && p.position.x === pos.x && p.position.y === pos.y)
-        ) &&
-        line.some(pos => pos.x === position.x && pos.y === position.y)
-      );
-    }
-  
-    const game = await Game.findById(gameId);
-    if (!game) return acknowledge({ success: false, error: "Game not found" });
-  
-    const currentPlayerColor = game.players.red.toString() === game.currentTurn.toString() ? 'red' : 'blue';
-    const piece = game.board.pieces.find(p => p.id === pieceId && p.player === currentPlayerColor);
-    if (!piece) return acknowledge({ success: false, error: "Invalid piece" });
-  
-    const playerPiecesCount = game.board.pieces.filter(p => p.player === currentPlayerColor).length;
-  
-    function isValidBoardPosition(pos) {
-      const validPositions = [
-        { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 6, y: 0 },
-        { x: 0, y: 3 }, { x: 6, y: 3 },
-        { x: 0, y: 6 }, { x: 3, y: 6 }, { x: 6, y: 6 },
-        { x: 1, y: 1 }, { x: 3, y: 1 }, { x: 5, y: 1 },
-        { x: 1, y: 3 }, { x: 5, y: 3 },
-        { x: 1, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 },
-        { x: 2, y: 2 }, { x: 3, y: 2 }, { x: 4, y: 2 },
-        { x: 2, y: 3 }, { x: 4, y: 3 },
-        { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 },
-      ];
-      return validPositions.some(p => p.x === pos.x && p.y === pos.y);
-    }
-  
-    // Define the adjacency connections for Nine Men's Morris board
-    function getAdjacentPositions(pos) {
-      const adjacencies = {
-        '0,0': [{x: 3, y: 0}, {x: 0, y: 3}],
-        '3,0': [{x: 0, y: 0}, {x: 6, y: 0}, {x: 3, y: 1}],
-        '6,0': [{x: 3, y: 0}, {x: 6, y: 3}],
-        '0,3': [{x: 0, y: 0}, {x: 1, y: 3}, {x: 0, y: 6}],
-        '6,3': [{x: 6, y: 0}, {x: 5, y: 3}, {x: 6, y: 6}],
-        '0,6': [{x: 0, y: 3}, {x: 3, y: 6}],
-        '3,6': [{x: 0, y: 6}, {x: 6, y: 6}, {x: 3, y: 5}],
-        '6,6': [{x: 6, y: 3}, {x: 3, y: 6}],
-        '1,1': [{x: 3, y: 1}, {x: 1, y: 3}],
-        '3,1': [{x: 1, y: 1}, {x: 5, y: 1}, {x: 3, y: 0}, {x: 3, y: 2}],
-        '5,1': [{x: 3, y: 1}, {x: 5, y: 3}],
-        '1,3': [{x: 0, y: 3}, {x: 2, y: 3}, {x: 1, y: 1}, {x: 1, y: 5}],
-        '5,3': [{x: 4, y: 3}, {x: 6, y: 3}, {x: 5, y: 1}, {x: 5, y: 5}],
-        '1,5': [{x: 1, y: 3}, {x: 3, y: 5}],
-        '3,5': [{x: 1, y: 5}, {x: 5, y: 5}, {x: 3, y: 4}, {x: 3, y: 6}],
-        '5,5': [{x: 3, y: 5}, {x: 5, y: 3}],
-        '2,2': [{x: 3, y: 2}, {x: 2, y: 3}],
-        '3,2': [{x: 2, y: 2}, {x: 4, y: 2}, {x: 3, y: 1}],
-        '4,2': [{x: 3, y: 2}, {x: 4, y: 3}],
-        '2,3': [{x: 1, y: 3}, {x: 2, y: 2}, {x: 2, y: 4}],
-        '4,3': [{x: 4, y: 2}, {x: 5, y: 3}, {x: 4, y: 4}],
-        '2,4': [{x: 2, y: 3}, {x: 3, y: 4}],
-        '3,4': [{x: 2, y: 4}, {x: 4, y: 4}, {x: 3, y: 5}],
-        '4,4': [{x: 3, y: 4}, {x: 4, y: 3}]
-      };
-      
-      const key = `${pos.x},${pos.y}`;
-      return adjacencies[key] || [];
-    }
-  
-    function canMoveTo(fromPos, toPos, boardPieces, gamePhase, playerPiecesCount) {
-      // Check if destination is empty
-      const isEmpty = !boardPieces.some(p => p.position.x === toPos.x && p.position.y === toPos.y);
-      if (!isEmpty) return false;
-  
-      // Check if destination is valid board position
-      if (!isValidBoardPosition(toPos)) return false;
-  
-      // Flying phase: can move to any empty position
-      if (gamePhase === 'flying' || playerPiecesCount <= 3) {
-        return true;
+    socket.on('movePiece', async ({ gameId, pieceId, newPosition, playerId }, acknowledge) => {
+      console.log('🟢 Received movePiece request:', { gameId, pieceId, newPosition, playerId });
+    
+      function checkForMill(position, player, pieces) {
+        const mills = [
+          [{x: 0, y: 0}, {x: 3, y: 0}, {x: 6, y: 0}],
+          [{x: 1, y: 1}, {x: 3, y: 1}, {x: 5, y: 1}],
+          [{x: 2, y: 2}, {x: 3, y: 2}, {x: 4, y: 2}],
+          [{x: 1, y: 5}, {x: 3, y: 5}, {x: 5, y: 5}],
+          [{x: 2, y: 4}, {x: 3, y: 4}, {x: 4, y: 4}],
+          [{x: 0, y: 6}, {x: 3, y: 6}, {x: 6, y: 6}],
+          [{x: 3, y: 0}, {x: 3, y: 1}, {x: 3, y: 2}],
+          [{x: 3, y: 4}, {x: 3, y: 5}, {x: 3, y: 6}],
+          [{x: 0, y: 3}, {x: 1, y: 3}, {x: 2, y: 3}],
+          [{x: 4, y: 3}, {x: 5, y: 3}, {x: 6, y: 3}],
+          [{x: 0, y: 0}, {x: 0, y: 3}, {x: 0, y: 6}],
+          [{x: 1, y: 1}, {x: 1, y: 3}, {x: 1, y: 5}],
+          [{x: 2, y: 2}, {x: 2, y: 3}, {x: 2, y: 4}],
+          [{x: 4, y: 2}, {x: 4, y: 3}, {x: 4, y: 4}],
+          [{x: 5, y: 1}, {x: 5, y: 3}, {x: 5, y: 5}],
+          [{x: 6, y: 0}, {x: 6, y: 3}, {x: 6, y: 6}],
+          [{x: 0, y: 0}, {x: 1, y: 1}, {x: 2, y: 2}],
+          [{x: 6, y: 0}, {x: 5, y: 1}, {x: 4, y: 2}],
+          [{x: 6, y: 6}, {x: 5, y: 5}, {x: 4, y: 4}],
+          [{x: 0, y: 6}, {x: 1, y: 5}, {x: 2, y: 4}],
+        ];
+        return mills.some(line =>
+          line.every(pos =>
+            pieces.some(p => p.player === player && p.position.x === pos.x && p.position.y === pos.y)
+          ) &&
+          line.some(pos => pos.x === position.x && pos.y === position.y)
+        );
       }
-  
-      // Moving phase: can only move to adjacent positions
-      if (gamePhase === 'moving') {
-        const adjacentPositions = getAdjacentPositions(fromPos);
-        return adjacentPositions.some(pos => pos.x === toPos.x && pos.y === toPos.y);
+    
+      const game = await Game.findById(gameId);
+      if (!game) return acknowledge({ success: false, error: "Game not found" });
+    
+      const currentPlayerColor = game.players.red.toString() === game.currentTurn.toString() ? 'red' : 'blue';
+      const piece = game.board.pieces.find(p => p.id === pieceId && p.player === currentPlayerColor);
+      if (!piece) return acknowledge({ success: false, error: "Invalid piece" });
+    
+      const playerPiecesCount = game.board.pieces.filter(p => p.player === currentPlayerColor).length;
+    
+      function isValidBoardPosition(pos) {
+        const validPositions = [
+          { x: 0, y: 0 }, { x: 3, y: 0 }, { x: 6, y: 0 },
+          { x: 0, y: 3 }, { x: 6, y: 3 },
+          { x: 0, y: 6 }, { x: 3, y: 6 }, { x: 6, y: 6 },
+          { x: 1, y: 1 }, { x: 3, y: 1 }, { x: 5, y: 1 },
+          { x: 1, y: 3 }, { x: 5, y: 3 },
+          { x: 1, y: 5 }, { x: 3, y: 5 }, { x: 5, y: 5 },
+          { x: 2, y: 2 }, { x: 3, y: 2 }, { x: 4, y: 2 },
+          { x: 2, y: 3 }, { x: 4, y: 3 },
+          { x: 2, y: 4 }, { x: 3, y: 4 }, { x: 4, y: 4 },
+        ];
+        return validPositions.some(p => p.x === pos.x && p.y === pos.y);
       }
-  
-      return false;
-    }
-  
-    const isValidMove = canMoveTo(piece.position, newPosition, game.board.pieces, game.phase, playerPiecesCount);
-    if (!isValidMove) return acknowledge({ success: false, error: "Invalid move" });
-  
-    piece.position = newPosition;
-    const formedMill = checkForMill(newPosition, currentPlayerColor, game.board.pieces);
-  
-    if (formedMill) {
-      game.phase = 'removing';
-    } else {
-      game.phase = 'moving';
-      game.currentTurn = game.players.red.toString() === game.currentTurn.toString() ? game.players.blue : game.players.red;
-    }
-  
-    let winnerResult;
-    if (typeof checkForWinner === 'function') {
-      winnerResult = checkForWinner(game);
-      if (winnerResult) game.winner = winnerResult.winner;
-    }
-  
-    await game.save();
-  
-    io.to(gameId).emit('pieceMoved', {
-      updatedPieces: game.board.pieces,
-      currentTurn: game.currentTurn,
-      formedMill,
-      phase: game.phase,
-      winner: game.winner
-    });
-  
-    if (game.winner) {
-      io.to(gameId).emit('gameOver', {
-        winner: game.winner,
-        reason: winnerResult ? winnerResult.reason : 'Game ended'
+    
+      // Define the adjacency connections for Nine Men's Morris board
+      // Based on the standard board layout with coordinates (0,0) to (6,6)
+      function getAdjacentPositions(pos) {
+        const adjacencies = {
+          // Outer ring corners
+          '0,0': [{x: 3, y: 0}, {x: 0, y: 3}],
+          '6,0': [{x: 3, y: 0}, {x: 6, y: 3}],
+          '6,6': [{x: 6, y: 3}, {x: 3, y: 6}],
+          '0,6': [{x: 0, y: 3}, {x: 3, y: 6}],
+          
+          // Outer ring midpoints
+          '3,0': [{x: 0, y: 0}, {x: 6, y: 0}, {x: 3, y: 1}],
+          '6,3': [{x: 6, y: 0}, {x: 6, y: 6}, {x: 5, y: 3}],
+          '3,6': [{x: 6, y: 6}, {x: 0, y: 6}, {x: 3, y: 5}],
+          '0,3': [{x: 0, y: 6}, {x: 0, y: 0}, {x: 1, y: 3}],
+          
+          // Middle ring corners
+          '1,1': [{x: 3, y: 1}, {x: 1, y: 3}],
+          '5,1': [{x: 3, y: 1}, {x: 5, y: 3}],
+          '5,5': [{x: 5, y: 3}, {x: 3, y: 5}],
+          '1,5': [{x: 1, y: 3}, {x: 3, y: 5}],
+          
+          // Middle ring midpoints
+          '3,1': [{x: 3, y: 0}, {x: 1, y: 1}, {x: 5, y: 1}, {x: 3, y: 2}],
+          '5,3': [{x: 6, y: 3}, {x: 5, y: 1}, {x: 5, y: 5}, {x: 4, y: 3}],
+          '3,5': [{x: 3, y: 6}, {x: 5, y: 5}, {x: 1, y: 5}, {x: 3, y: 4}],
+          '1,3': [{x: 0, y: 3}, {x: 1, y: 5}, {x: 1, y: 1}, {x: 2, y: 3}],
+          
+          // Inner ring corners
+          '2,2': [{x: 3, y: 2}, {x: 2, y: 3}],
+          '4,2': [{x: 3, y: 2}, {x: 4, y: 3}],
+          '4,4': [{x: 4, y: 3}, {x: 3, y: 4}],
+          '2,4': [{x: 2, y: 3}, {x: 3, y: 4}],
+          
+          // Inner ring midpoints
+          '3,2': [{x: 3, y: 1}, {x: 2, y: 2}, {x: 4, y: 2}],
+          '4,3': [{x: 5, y: 3}, {x: 4, y: 2}, {x: 4, y: 4}],
+          '3,4': [{x: 3, y: 5}, {x: 4, y: 4}, {x: 2, y: 4}],
+          '2,3': [{x: 1, y: 3}, {x: 2, y: 4}, {x: 2, y: 2}]
+        };
+        
+        const key = `${pos.x},${pos.y}`;
+        const adjacent = adjacencies[key] || [];
+        console.log(`🔍 Getting adjacent positions for ${key}:`, adjacent);
+        return adjacent;
+      }
+    
+      function canMoveTo(fromPos, toPos, boardPieces, gamePhase, playerPiecesCount) {
+        console.log('🔍 Checking move validity:', {
+          from: fromPos,
+          to: toPos,
+          gamePhase,
+          playerPiecesCount
+        });
+    
+        // Check if destination is empty
+        const isEmpty = !boardPieces.some(p => p.position.x === toPos.x && p.position.y === toPos.y);
+        if (!isEmpty) {
+          console.log('❌ Destination is occupied');
+          return false;
+        }
+    
+        // Check if destination is valid board position
+        if (!isValidBoardPosition(toPos)) {
+          console.log('❌ Invalid board position');
+          return false;
+        }
+    
+        // Flying phase: can move to any empty position
+        if (gamePhase === 'flying' || playerPiecesCount <= 3) {
+          console.log('✅ Flying phase - move allowed');
+          return true;
+        }
+    
+        // Moving phase: can only move to adjacent positions
+        if (gamePhase === 'moving') {
+          const adjacentPositions = getAdjacentPositions(fromPos);
+          console.log('🔍 Adjacent positions for', fromPos, ':', adjacentPositions);
+          const isAdjacent = adjacentPositions.some(pos => pos.x === toPos.x && pos.y === toPos.y);
+          console.log('🔍 Is adjacent move?', isAdjacent);
+          return isAdjacent;
+        }
+    
+        console.log('❌ Unknown game phase');
+        return false;
+      }
+    
+      console.log('🔍 Move validation details:', {
+        piecePosition: piece.position,
+        newPosition,
+        gamePhase: game.phase,
+        playerPiecesCount,
+        currentPlayerColor
       });
-    }
-  
-    acknowledge({ success: true, updatedPieces: game.board.pieces, formedMill });
-  });
+    
+      const isValidMove = canMoveTo(piece.position, newPosition, game.board.pieces, game.phase, playerPiecesCount);
+      if (!isValidMove) {
+        console.log('❌ Move validation failed');
+        return acknowledge({ success: false, error: "Invalid move" });
+      }
+    
+      piece.position = newPosition;
+      const formedMill = checkForMill(newPosition, currentPlayerColor, game.board.pieces);
+    
+      if (formedMill) {
+        game.phase = 'removing';
+      } else {
+        game.phase = 'moving';
+        game.currentTurn = game.players.red.toString() === game.currentTurn.toString() ? game.players.blue : game.players.red;
+      }
+    
+      let winnerResult;
+      if (typeof checkForWinner === 'function') {
+        winnerResult = checkForWinner(game);
+        if (winnerResult) game.winner = winnerResult.winner;
+      }
+    
+      await game.save();
+    
+      io.to(gameId).emit('pieceMoved', {
+        updatedPieces: game.board.pieces,
+        currentTurn: game.currentTurn,
+        formedMill,
+        phase: game.phase,
+        winner: game.winner
+      });
+    
+      if (game.winner) {
+        io.to(gameId).emit('gameOver', {
+          winner: game.winner,
+          reason: winnerResult ? winnerResult.reason : 'Game ended'
+        });
+      }
+    
+      acknowledge({ success: true, updatedPieces: game.board.pieces, formedMill });
+    });
     
    
     socket.on("gameOver", ({ winner, reason }) => {

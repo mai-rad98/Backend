@@ -1044,62 +1044,105 @@ socket.on('movePiece', async ({ gameId, pieceId, newPosition, playerId }, acknow
   }
 
   // Define the adjacency connections for Nine Men's Morris board
+  // Based on the standard board layout with coordinates (0,0) to (6,6)
   function getAdjacentPositions(pos) {
     const adjacencies = {
+      // Outer ring corners
       '0,0': [{x: 3, y: 0}, {x: 0, y: 3}],
-      '3,0': [{x: 0, y: 0}, {x: 6, y: 0}, {x: 3, y: 1}],
       '6,0': [{x: 3, y: 0}, {x: 6, y: 3}],
-      '0,3': [{x: 0, y: 0}, {x: 1, y: 3}, {x: 0, y: 6}],
-      '6,3': [{x: 6, y: 0}, {x: 5, y: 3}, {x: 6, y: 6}],
-      '0,6': [{x: 0, y: 3}, {x: 3, y: 6}],
-      '3,6': [{x: 0, y: 6}, {x: 6, y: 6}, {x: 3, y: 5}],
       '6,6': [{x: 6, y: 3}, {x: 3, y: 6}],
+      '0,6': [{x: 0, y: 3}, {x: 3, y: 6}],
+      
+      // Outer ring midpoints
+      '3,0': [{x: 0, y: 0}, {x: 6, y: 0}, {x: 3, y: 1}],
+      '6,3': [{x: 6, y: 0}, {x: 6, y: 6}, {x: 5, y: 3}],
+      '3,6': [{x: 6, y: 6}, {x: 0, y: 6}, {x: 3, y: 5}],
+      '0,3': [{x: 0, y: 6}, {x: 0, y: 0}, {x: 1, y: 3}],
+      
+      // Middle ring corners
       '1,1': [{x: 3, y: 1}, {x: 1, y: 3}],
-      '3,1': [{x: 1, y: 1}, {x: 5, y: 1}, {x: 3, y: 0}, {x: 3, y: 2}],
       '5,1': [{x: 3, y: 1}, {x: 5, y: 3}],
-      '1,3': [{x: 0, y: 3}, {x: 2, y: 3}, {x: 1, y: 1}, {x: 1, y: 5}],
-      '5,3': [{x: 4, y: 3}, {x: 6, y: 3}, {x: 5, y: 1}, {x: 5, y: 5}],
+      '5,5': [{x: 5, y: 3}, {x: 3, y: 5}],
       '1,5': [{x: 1, y: 3}, {x: 3, y: 5}],
-      '3,5': [{x: 1, y: 5}, {x: 5, y: 5}, {x: 3, y: 4}, {x: 3, y: 6}],
-      '5,5': [{x: 3, y: 5}, {x: 5, y: 3}],
+      
+      // Middle ring midpoints
+      '3,1': [{x: 3, y: 0}, {x: 1, y: 1}, {x: 5, y: 1}, {x: 3, y: 2}],
+      '5,3': [{x: 6, y: 3}, {x: 5, y: 1}, {x: 5, y: 5}, {x: 4, y: 3}],
+      '3,5': [{x: 3, y: 6}, {x: 5, y: 5}, {x: 1, y: 5}, {x: 3, y: 4}],
+      '1,3': [{x: 0, y: 3}, {x: 1, y: 5}, {x: 1, y: 1}, {x: 2, y: 3}],
+      
+      // Inner ring corners
       '2,2': [{x: 3, y: 2}, {x: 2, y: 3}],
-      '3,2': [{x: 2, y: 2}, {x: 4, y: 2}, {x: 3, y: 1}],
       '4,2': [{x: 3, y: 2}, {x: 4, y: 3}],
-      '2,3': [{x: 1, y: 3}, {x: 2, y: 2}, {x: 2, y: 4}],
-      '4,3': [{x: 4, y: 2}, {x: 5, y: 3}, {x: 4, y: 4}],
+      '4,4': [{x: 4, y: 3}, {x: 3, y: 4}],
       '2,4': [{x: 2, y: 3}, {x: 3, y: 4}],
-      '3,4': [{x: 2, y: 4}, {x: 4, y: 4}, {x: 3, y: 5}],
-      '4,4': [{x: 3, y: 4}, {x: 4, y: 3}]
+      
+      // Inner ring midpoints
+      '3,2': [{x: 3, y: 1}, {x: 2, y: 2}, {x: 4, y: 2}],
+      '4,3': [{x: 5, y: 3}, {x: 4, y: 2}, {x: 4, y: 4}],
+      '3,4': [{x: 3, y: 5}, {x: 4, y: 4}, {x: 2, y: 4}],
+      '2,3': [{x: 1, y: 3}, {x: 2, y: 4}, {x: 2, y: 2}]
     };
     
     const key = `${pos.x},${pos.y}`;
-    return adjacencies[key] || [];
+    const adjacent = adjacencies[key] || [];
+    console.log(`🔍 Getting adjacent positions for ${key}:`, adjacent);
+    return adjacent;
   }
 
   function canMoveTo(fromPos, toPos, boardPieces, gamePhase, playerPiecesCount) {
+    console.log('🔍 Checking move validity:', {
+      from: fromPos,
+      to: toPos,
+      gamePhase,
+      playerPiecesCount
+    });
+
     // Check if destination is empty
     const isEmpty = !boardPieces.some(p => p.position.x === toPos.x && p.position.y === toPos.y);
-    if (!isEmpty) return false;
+    if (!isEmpty) {
+      console.log('❌ Destination is occupied');
+      return false;
+    }
 
     // Check if destination is valid board position
-    if (!isValidBoardPosition(toPos)) return false;
+    if (!isValidBoardPosition(toPos)) {
+      console.log('❌ Invalid board position');
+      return false;
+    }
 
     // Flying phase: can move to any empty position
     if (gamePhase === 'flying' || playerPiecesCount <= 3) {
+      console.log('✅ Flying phase - move allowed');
       return true;
     }
 
     // Moving phase: can only move to adjacent positions
     if (gamePhase === 'moving') {
       const adjacentPositions = getAdjacentPositions(fromPos);
-      return adjacentPositions.some(pos => pos.x === toPos.x && pos.y === toPos.y);
+      console.log('🔍 Adjacent positions for', fromPos, ':', adjacentPositions);
+      const isAdjacent = adjacentPositions.some(pos => pos.x === toPos.x && pos.y === toPos.y);
+      console.log('🔍 Is adjacent move?', isAdjacent);
+      return isAdjacent;
     }
 
+    console.log('❌ Unknown game phase');
     return false;
   }
 
+  console.log('🔍 Move validation details:', {
+    piecePosition: piece.position,
+    newPosition,
+    gamePhase: game.phase,
+    playerPiecesCount,
+    currentPlayerColor
+  });
+
   const isValidMove = canMoveTo(piece.position, newPosition, game.board.pieces, game.phase, playerPiecesCount);
-  if (!isValidMove) return acknowledge({ success: false, error: "Invalid move" });
+  if (!isValidMove) {
+    console.log('❌ Move validation failed');
+    return acknowledge({ success: false, error: "Invalid move" });
+  }
 
   piece.position = newPosition;
   const formedMill = checkForMill(newPosition, currentPlayerColor, game.board.pieces);
